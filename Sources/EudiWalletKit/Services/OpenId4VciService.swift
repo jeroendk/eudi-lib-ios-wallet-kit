@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// Modified by Jeroen de Kok for GBO Wallet, 2026-11-10; see GBO-PATCHES.md.
 
 import Foundation
 import OpenID4VCI
@@ -705,7 +706,14 @@ public actor OpenId4VciService {
 	}
 
 	private static func submissionUseCase(_ authorized: AuthorizedRequest, issuer: Issuer, configuration: CredentialConfiguration, bindingKeys: [BindingKey], publicKeys: [Data], logger: Logger) async throws -> IssuanceOutcome {
-		let payload: IssuanceRequestPayload = .configurationBased(credentialConfigurationIdentifier: configuration.configurationIdentifier)
+		// Local GBO demo build: OpenID4VCI 1.0 section 8.2 requires the
+		// credential_identifier when the token response returned one.
+		let payload: IssuanceRequestPayload
+		if let identifier = authorized.credentialIdentifiers?[configuration.configurationIdentifier]?.first {
+			payload = .identifierBased(credentialConfigurationIdentifier: configuration.configurationIdentifier, credentialIdentifier: identifier)
+		} else {
+			payload = .configurationBased(credentialConfigurationIdentifier: configuration.configurationIdentifier)
+		}
 		let requestOutcome = try await issuer.requestCredential(request: authorized, bindingKeys: bindingKeys, requestPayload: payload) { Issuer.createResponseEncryptionSpec($0) }
 		switch requestOutcome {
 		case .success(let response):
