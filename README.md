@@ -139,6 +139,19 @@ Set `preferredResponseMode` to override the response mode requested by the verif
 
 `OpenId4VpConfiguration.errorDispatchPolicy` controls which verifiers may receive protocol-level errors when a request fails validation. The default is `.allClients`, retaining the existing configuration and allowing notifications even when verifier authentication fails. Set `errorDispatchPolicy: .onlyAuthenticatedClients` to restrict notifications to authenticated verifiers. Errors are sent only when the OpenID4VP library supplies dispatch details.
 
+The preregistered verifier convenience initializer accepts `jarSigningAlg` (default: RS256). For an ES256 verifier, use:
+
+```swift
+let verifier = PreregisteredClient(
+    clientId: "registered-verifier",
+    verifierLegalName: "Example verifier",
+    webKeys: verifierWebKeys,
+    jarSigningAlg: JWSAlgorithm(.ES256)
+)
+```
+
+When migrating from 0.54.8, remove `verifierApiUri` from this initializer and `cacheIssuerMetadata` from `OpenId4VciConfiguration.init`. Both arguments were ignored and have been removed. Issuer metadata resolved directly by issuer URL continues to be cached automatically; this initializer does not offer a cache toggle.
+
 ### Trust configuration
 
 `EudiWallet` requires a `TrustConfiguration` that describes where trust anchors come from and how trust failures are handled. A single `TrustConfiguration` drives certificate-chain validation across the wallet:
@@ -166,15 +179,20 @@ let trustConfig = TrustConfiguration(
     docTypePolicies: [:],                // optional per-doc-type overrides of defaultPolicy
     requireSignedMetadata: true,         // require signed OpenID4VCI issuer metadata
     statusTrustPolicy: .warning,         // trust policy for status token signature validation
+    readerTrustPolicy: .enforce,         // OpenID4VP reader access certificate trust (default)
     clockSkew: 60                        // allowed clock skew (seconds) for status token verification
 )
 ```
 
 The `fallbackTrustSource` is optional (pass `nil` to disable it). When the primary trust source cannot evaluate a chain — for example, it has no verification context configured for the requested doc type — validation is delegated to the fallback source.
 
-Use `defaultPolicy` to control the behaviour on a trust failure: `.enforce` rejects the certificate chain, while `.warning` logs the failure but allows the operation to continue. Provide `docTypePolicies` to override the policy for specific doc types.
+Use `defaultPolicy` to control the behaviour on an issuer certificate trust failure: `.enforce` rejects the certificate chain, while `.warning` logs the failure but allows the operation to continue. Provide `docTypePolicies` to override the policy for specific doc types.
 
 The `statusTrustPolicy` parameter controls how the wallet handles trust failures when validating status list token signatures (used for document revocation/suspension checks). It defaults to `.enforce`, which rejects tokens whose signing certificate chain cannot be validated. Set it to `.warning` to log the trust failure but still allow the status check to succeed — useful during development or when status token issuers use certificates outside the configured trust anchors.
+
+The `readerTrustPolicy` parameter independently controls reader access certificate trust for OpenID4VP X.509 clients (`.x509SanDns` and `.x509Hash`). It defaults to `.enforce`, rejecting untrusted chains. Set it to `.warning` to allow a valid signed request with an untrusted chain to proceed with `readerAuthenticationStatus == .authenticatedWithUntrustedCertificate`. The chain must still be well formed and its evaluated leaf must match the request's signing certificate. This policy does not change BLE reader authentication, issuer trust, or WRPRC validation.
+
+Use `PresentationSession.readerAuthenticationStatus` and update exhaustive switches to handle `.authenticatedWithUntrustedCertificate`. For this status, display `readerCertValidationMessage` as a trust warning and do not show a trusted-reader badge; `readerLegalName` remains `nil`. See the [presentation guide](Sources/EudiWalletKit/EudiWalletKit.docc/PresentationService.md#reader-authentication-and-certificate-trust) for all authentication statuses.
 
 ### OpenID4VCI Configuration
 
@@ -571,6 +589,10 @@ When using `.requireSigned`, the issuer's metadata signature must validate again
 For the authorization code flow to work, the redirect URI must be specified specified by setting the the `openID4VciRedirectUri` property.
 The user is redirected in an authorization web view to the issuer's authorization endpoint. After the user authenticates and authorizes the request, the issuer redirects the user back to the application with an authorization code. The library exchanges the authorization code for an access token and issues the document.
 
+#### Client-driven web authorization
+
+By default the library presents the authorization flow in an `ASWebAuthenticationSession`. An application can take over this step by providing its own ``AuthorizationFlowHandler`` in the ``OpenId4VciConfiguration/authorizationFlowHandler`` property. The handler receives the authorization URL and the configured redirect URI, presents the authorization flow however it wants (external browser, `SFSafariViewController`, or in any other custom way) and returns the full redirect URL once the authorization server redirects back. The redirect URL may alternatively contain a presentation request in case of [Dynamic issuance](#dynamic-issuance).
+
 ### Pre-Authorization code flow
 
 When Issuer supports the pre-authorization code flow, the resolved offer will also contain the corresponding
@@ -768,6 +790,24 @@ Detailed documentation is provided in the DocC documentation [here](https://eu-d
 
 ### Reference application  
 A reference application that demonstrates the usage of this library is [App Wallet UI](https://github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui).
+
+## DCQL value matching
+
+Expected and credential claim values retain their JSON types using
+`OpenID4VP.DCQLClaimValue`. A request for boolean `true` matches boolean `true`,
+not string `"true"` or integer `1`. Mdoc scalar values are converted from CBOR;
+SD-JWT values are read from recreated claims at the requested claim path,
+including indexed and wildcard array paths.
+
+`DcqlQueryable.hasClaimWithValue` and `DefaultDcqlQueryable` claim-value maps now
+use `[DCQLClaimValue]`. Custom queryable implementations must preserve types.
+Existing `[String]` value arrays can be converted with
+`strings.map(DCQLClaimValue.string)`.
+
+The review dependency in `Package.swift` pins the SDK correction proposed in
+[OpenID4VP PR #257](https://github.com/eu-digital-identity-wallet/eudi-lib-ios-openid4vp-swift/pull/257).
+Replace it with an official SDK release containing that correction before
+merging or releasing this companion change.
 
 ## How to contribute
 
