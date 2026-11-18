@@ -73,6 +73,8 @@ public struct OpenId4VciConfiguration: Sendable {
 	public let dpopUsesClientAttestationKey: Bool
 	/// Builder used to create client-attestation proofs of possession.
 	public let clientAttestationPoPBuilder: (any ClientAttestationPoPBuilder)
+	/// Whether fetched issuer metadata is cached.
+	public let cacheIssuerMetadata: Bool
 	/// Wallet-side configuration of credential request / response encryption.
 	public let encryptionSupportConfig: EncryptionSupportConfig
 	/// Presents the authorization URL to the user during the authorization code flow and returns the redirect.
@@ -95,6 +97,7 @@ public struct OpenId4VciConfiguration: Sendable {
 		dpopUsesClientAttestationKey: Bool = false,
 		trustedIssuerCertificates: [x5chain]? = nil,
 		clientAttestationPoPBuilder: any ClientAttestationPoPBuilder = DefaultClientAttestationPoPBuilder(),
+		cacheIssuerMetadata: Bool = true,
 		encryptionSupportConfig: EncryptionSupportConfig = .init(),
 		authorizationFlowHandler: (any AuthorizationFlowHandler)? = nil
 	) {
@@ -113,6 +116,7 @@ public struct OpenId4VciConfiguration: Sendable {
 		self.dpopKeyOptions = dpopKeyOptions
 		self.dpopUsesClientAttestationKey = dpopUsesClientAttestationKey
 		self.clientAttestationPoPBuilder = clientAttestationPoPBuilder
+		self.cacheIssuerMetadata = cacheIssuerMetadata
 		self.encryptionSupportConfig = encryptionSupportConfig
 		self.authorizationFlowHandler = authorizationFlowHandler ?? ASWebAuthenticationSessionFlowHandler()
 	}
