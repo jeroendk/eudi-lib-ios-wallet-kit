@@ -518,7 +518,7 @@ public actor OpenId4VciService {
 	func resolveIssuerMetadata() async throws -> (CredentialIssuerId, CredentialIssuerMetadata) {
 		let issuerURL = config.credentialIssuerURL!
 		// Check cache first
-		if let cachedResult = Self.metadataCache.withLock({ $0.issuers[issuerURL] }) {
+		if config.cacheIssuerMetadata, let cachedResult = Self.metadataCache.withLock({ $0.issuers[issuerURL] }) {
 			return cachedResult
 		}
 		let credentialIssuerIdentifier = try CredentialIssuerId(issuerURL)
@@ -526,7 +526,9 @@ public actor OpenId4VciService {
 		switch issuerMetadata {
 		case .success(let metaData):
 			let result = (credentialIssuerIdentifier, metaData)
-			Self.metadataCache.withLock { $0.issuers[issuerURL] = result }
+			if config.cacheIssuerMetadata {
+				Self.metadataCache.withLock { $0.issuers[issuerURL] = result }
+			}
 			return result
 		case .failure(let error):
 			let errorDescription = error.localizedDescription
