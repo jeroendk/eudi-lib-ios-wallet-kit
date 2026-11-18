@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jeroendk/eudi-lib-ios-iso18013-data-transfer.git",
       "state" : {
-        "revision" : "1d88cf13b0cec27cb70f954a79970361c5e61fb0",
-        "version" : "0.30.1-gbo.1"
+        "revision" : "47bb565d2fb6d724cb6841a8e7f56a284d1be6eb",
+        "version" : "0.30.1001"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/jeroendk/eudi-lib-ios-iso18013-security.git",
       "state" : {
         "revision" : "fcd920337afa4b08d8932ae519c6de6027f98039",
-        "version" : "0.31.3-gbo.1"
+        "version" : "0.31.3001"
       }
     },
     {

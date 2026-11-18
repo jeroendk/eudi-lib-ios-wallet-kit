@@ -12,3 +12,7 @@ Upstream base: `95f6eeb88f0eda02e64ebbb08014e89de0440b0b`.
 The GBO dependency tags are reserved and have not been created or pushed.
 Publication, lockfile refresh and the final app dependency switch are pending.
 The existing app builds retain the validated prepared SDK set in the meantime.
+
+The public fork version is `0.62.2001` and selects transfer `0.30.1001`
+and security `0.31.3001`. Numeric fork versions allow the existing upstream
+DC-API version range to resolve the same shared GBO packages.
