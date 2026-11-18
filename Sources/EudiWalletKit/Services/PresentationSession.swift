@@ -135,7 +135,11 @@ public final class PresentationSession: @unchecked Sendable, ObservableObject {
 			let warningsKey = if presentationService.flow == .ble { presentationService.wrpVerifierWarnings?.keys.first(where: { !$0.isEmpty }) } else { request.requestName }
 			let warningSet: [PresentationPolicyViolation]? = if let warnings = presentationService.wrpVerifierWarnings, let warningsKey { warnings[warningsKey] } else { nil }
 			let transactions = (presentationService as? OpenId4VpService)?.transactionDataByRequest[request.requestName ?? ""] ?? [:]
-			disclosedDocumentSets.append(DisclosedDocumentSet(docElements: disclosedElements, warnings: warningSet, transactionData: transactions, requestName: request.requestName))
+			let openIdService = presentationService as? OpenId4VpService
+			let selections = openIdService?.credentialSelections[request.requestName ?? ""] ?? []
+			disclosedDocumentSets.append(DisclosedDocumentSet(docElements: disclosedElements, warnings: warningSet, transactionData: transactions, requestName: request.requestName,
+				credentialSelections: selections, credentialQueries: openIdService?.dcql.map { CredentialQuerySelection.metadata($0, option: selections) } ?? [],
+				credentialSets: openIdService?.dcql?.credentialSets))
 		} // next request
 		wrpVerifierPolicy = presentationService.wrpVerifierPolicy
 		wrpVerifierWarnings = presentationService.wrpVerifierWarnings
@@ -221,7 +225,7 @@ public final class PresentationSession: @unchecked Sendable, ObservableObject {
 	func updateKeyBatchInfoAndDeleteCredentialIfNeeded(presentedIds: [Document.ID], zkpDocumentIds: [Document.ID]?) async throws {
 		for (id, dpi) in docIdToPresentInfo where presentedIds.contains(id) {
 			if let zkpDocumentIds, zkpDocumentIds.contains(id) { continue }
-			let secureArea = SecureAreaRegistry.shared.get(name: dpi.secureAreaName)
+			let secureArea = try SecureAreaRegistry.shared.get(name: dpi.secureAreaName)
 			guard let keyIndex = documentKeyIndexes[id] else { continue }
 			let newKeyBatchInfo = try await secureArea.updateKeyBatchInfo(id: id, keyIndex: keyIndex)
 			if newKeyBatchInfo.credentialPolicy == .oneTimeUse {
